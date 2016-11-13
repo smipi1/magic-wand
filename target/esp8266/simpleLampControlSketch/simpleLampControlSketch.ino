@@ -8,48 +8,50 @@ int hueDegree = 182;
 int userStringLenght = 40;
 String user = "FFMjW08OQiwcSFS24TIRybSJ5nVZQT2BEermgfvU";
 String bridgeIpAddress = "192.168.88.253";
+float constant = 375;
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS , TCS34725_GAIN_1X);
 
 static hsv rgb2hsv(rgb in)
 {
-    hsv         out;
-    double      min, max, delta;
+  hsv         out;
+  double      min, max, delta;
 
-    min = in.r < in.g ? in.r : in.g;
-    min = min  < in.b ? min  : in.b;
+  min = in.r < in.g ? in.r : in.g;
+  min = min  < in.b ? min  : in.b;
 
-    max = in.r > in.g ? in.r : in.g;
-    max = max  > in.b ? max  : in.b;
+  max = in.r > in.g ? in.r : in.g;
+  max = max  > in.b ? max  : in.b;
 
-    out.v = max;                                // v
-    delta = max - min;
-    if (delta < 0.00001)
-    {
-        out.s = 0;
-        out.h = 0; // undefined, maybe nan?
-        return out;
-    }
-    if( max > 0.0 ) { // NOTE: if Max is == 0, this divide would cause a crash
-        out.s = (delta / max);                  // s
-    } else {
-        // if max is 0, then r = g = b = 0              
-            // s = 0, v is undefined
-        out.s = 0.0;
-        out.h = NAN;                            // its now undefined
-        return out;
-    }
-    if( in.r >= max )                           // > is bogus, just keeps compilor happy
-        out.h = ( in.g - in.b ) / delta;        // between yellow & magenta
-    else if( in.g >= max )
-        out.h = 2.0 + ( in.b - in.r ) / delta;  // between cyan & yellow
-    else
-        out.h = 4.0 + ( in.r - in.g ) / delta;  // between magenta & cyan
+  out.v = max;                                // v
+  delta = max - min;
+  if (delta < 0.00001)
+  {
+      out.s = 0;
+      out.h = 0; // undefined, maybe nan?
+      return out;
+  }
+  if( max > 0.0 ) { // NOTE: if Max is == 0, this divide would cause a crash
+      out.s = (delta / max);                  // s
+  } else {
+      // if max is 0, then r = g = b = 0              
+          // s = 0, v is undefined
+      out.s = 0.0;
+      out.h = NAN;                            // its now undefined
+      return out;
+  }
+  if( in.r >= max )                           // > is bogus, just keeps compilor happy
+      out.h = ( in.g - in.b ) / delta;        // between yellow & magenta
+  else if( in.g >= max )
+      out.h = 2.0 + ( in.b - in.r ) / delta;  // between cyan & yellow
+  else
+      out.h = 4.0 + ( in.r - in.g ) / delta;  // between magenta & cyan
 
-    out.h *= 60.0;                              // degrees
+  out.h *= 60.0;                              // degrees
 
-    if( out.h < 0.0 )
-        out.h += 360.0;
+  if( out.h < 0.0 )
+      out.h += 360.0;
 
-    return out;
+  return out;
 }
 
 static int clipPut(char clip[], size_t clipStringLength)
@@ -100,17 +102,27 @@ static int setLampToRgbColor(rgb val)
 }
 
 void setup() 
-  {
+{
+  pinMode(16, OUTPUT);
+  digitalWrite(16, LOW);
+  
   Serial.begin(115200);                                 //Serial connection
   WiFi.begin("MikroTik-Kevin", "12345678");             //WiFi connection
 
   while (WiFi.status() != WL_CONNECTED)
   {  //Wait for the WiFI connection completion
     delay(500);
-    Serial.println("Waiting for connection...");
+    Serial.println("Waiting for network connection...");
   }
-
   Serial.println("connected");
+
+  while (!tcs.begin()) 
+  {
+    delay(500);
+    Serial.println("Waiting for TCS34725... ");
+  }
+  Serial.println("TCS34725 found");
+
 }
 
 void loop() {
@@ -161,6 +173,49 @@ void loop() {
       {
         Serial.println("rgb color not send to lamp succesfull");
       }
+    }
+    else if (action.startsWith("sense"))
+    {
+      pinMode(16, OUTPUT);
+      digitalWrite(16, HIGH); // @gremlins Bright light, bright light!
+
+      delay(100); 
+      uint16_t r, g, b, c;
+      tcs.getRawData(&r, &g, &b, &c);
+      Serial.print(r, DEC); Serial.print(", ");
+      Serial.print(g, DEC); Serial.print(", ");
+      Serial.print(b, DEC); Serial.print(", ");
+      Serial.print(c, DEC); Serial.println("");
+      
+      float gain = constant/c;
+      Serial.println("gain " +  String(gain));
+      rgb val;
+      val.r = gain * r;
+      val.g = gain * g;
+      val.b = gain * b;
+      Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
+      
+      if (val.r > 0xFF)
+      {
+        val.r = 0xFF;
+      }
+      if (val.g > 0xFF)
+      {
+        val.g = 0xFF;
+      }
+      if (val.b > 0xFF)
+      {
+        val.b = 0xFF;
+      }
+      Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
+
+      if (setLampToRgbColor(val))
+      {
+        Serial.println("rgb color not send to lamp succesfull");
+      }
+      
+      delay(100);  
+      digitalWrite(16, LOW);
     }
   }
 }
