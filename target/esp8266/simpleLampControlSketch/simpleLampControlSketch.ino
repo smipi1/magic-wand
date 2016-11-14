@@ -101,6 +101,32 @@ static int setLampToRgbColor(rgb val)
   return 0;
 }
 
+static rgb colorSensorAlgorithm(int r, int g, int b, int c)
+{
+  float gain = constant/c;
+  Serial.println("gain " +  String(gain));
+  rgb val;
+  val.r = gain * r;
+  val.g = gain * g;
+  val.b = gain * b;
+  Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
+  
+  if (val.r > 0xFF)
+  {
+   val.r = 0xFF;
+  }
+  if (val.g > 0xFF)
+  {
+   val.g = 0xFF;
+  }
+  if (val.b > 0xFF)
+  {
+    val.b = 0xFF;
+  }
+  Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
+  return val;
+}
+
 void setup() 
 {
   pinMode(16, OUTPUT);
@@ -186,28 +212,8 @@ void loop() {
       Serial.print(g, DEC); Serial.print(", ");
       Serial.print(b, DEC); Serial.print(", ");
       Serial.print(c, DEC); Serial.println("");
-      
-      float gain = constant/c;
-      Serial.println("gain " +  String(gain));
-      rgb val;
-      val.r = gain * r;
-      val.g = gain * g;
-      val.b = gain * b;
-      Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
-      
-      if (val.r > 0xFF)
-      {
-        val.r = 0xFF;
-      }
-      if (val.g > 0xFF)
-      {
-        val.g = 0xFF;
-      }
-      if (val.b > 0xFF)
-      {
-        val.b = 0xFF;
-      }
-      Serial.println("r " +  String(val.r) + " g " + String(val.g) + " b " + String(val.b));
+
+      rgb val = colorSensorAlgorithm(r,g,b,c);
 
       if (setLampToRgbColor(val))
       {
