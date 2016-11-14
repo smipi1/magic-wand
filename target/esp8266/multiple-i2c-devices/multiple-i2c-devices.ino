@@ -15,7 +15,7 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS  ,  TCS
 //Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_101MS, TCS34725_GAIN_1X);
 
 const uint8_t MPU=0x68;  // I2C address of the MPU-6050
-int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+
 
 bool initGt521(void)
 {
@@ -29,19 +29,21 @@ bool initGt521(void)
 
 void readGt521(void)
 {
-  size_t size = 14;
+  int16_t AcX,AcY,AcZ,Tmp;
+  
+  size_t numberOfRegisters = 14;
   Wire.beginTransmission(MPU);
-  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+  Wire.write(0x3B);                                 // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
-  Wire.requestFrom(MPU,size,true);  // request a total of 14 registers
+  Wire.requestFrom(MPU, numberOfRegisters, true);  // request a total of 14 registers
   AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)    
   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
   AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
   Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
-  Serial.print("AcX = "); Serial.print(AcX);
-  Serial.print(" | AcY = "); Serial.print(AcY);
-  Serial.print(" | AcZ = "); Serial.print(AcZ);
-  Serial.print(" | Tmp = "); Serial.println(Tmp/340.00+36.53);  //equation for temperature in degrees C from datasheet
+  
+  Serial.print(AcX);
+  Serial.print("  "); Serial.print(AcY);
+  Serial.print("  "); Serial.println(AcZ);
 }
 
 void setup(void) {
@@ -67,26 +69,27 @@ void setup(void) {
 }
 
 void loop(void) {
-  uint16_t r, g, b, c;
-  
-  delay(10); 
-  tcs.getRawData(&r, &g, &b, &c);
-  delay(10); 
-  digitalWrite(16, HIGH);   // turn the LED on (HIGH is the voltage level)
-  
-  Serial.print(r, DEC); Serial.print(", ");
-  Serial.print(g, DEC); Serial.print(", ");
-  Serial.print(b, DEC); Serial.print(", ");
-  Serial.print(c, DEC); Serial.print(", ");
-//  delay(100);  
-  delay(10); 
-  tcs.getRawData(&r, &g, &b, &c);
-  delay(10); 
-  digitalWrite(16, LOW);   // turn the LED on (HIGH is the voltage level)
-  Serial.print(r, DEC); Serial.print(", ");
-  Serial.print(g, DEC); Serial.print(", ");
-  Serial.print(b, DEC); Serial.print(", ");
-  Serial.print(c, DEC); Serial.println("");
+//  uint16_t r, g, b, c;
+//  
+//  delay(10); 
+//  tcs.getRawData(&r, &g, &b, &c);
+//  delay(10); 
+//  digitalWrite(16, HIGH);   // turn the LED on (HIGH is the voltage level)
+//  
+//  Serial.print(r, DEC); Serial.print(", ");
+//  Serial.print(g, DEC); Serial.print(", ");
+//  Serial.print(b, DEC); Serial.print(", ");
+//  Serial.print(c, DEC); Serial.print(", ");
+////  delay(100);  
+//  delay(10); 
+//  tcs.getRawData(&r, &g, &b, &c);
+//  delay(10); 
+//  digitalWrite(16, LOW);   // turn the LED on (HIGH is the voltage level)
+//  Serial.print(r, DEC); Serial.print(", ");
+//  Serial.print(g, DEC); Serial.print(", ");
+//  Serial.print(b, DEC); Serial.print(", ");
+//  Serial.print(c, DEC); Serial.println("");
 
   readGt521();
+  delay(50);
 }
