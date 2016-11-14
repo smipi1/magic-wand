@@ -4,12 +4,44 @@
 #include "whatever.h"
 #include "Adafruit_TCS34725.h"
 
+const uint8_t MPU=0x68;  // I2C address of the MPU-6050
+const int diffAccThreshold = 15500;
+
 int hueDegree = 182;
 int userStringLenght = 40;
 String user = "FFMjW08OQiwcSFS24TIRybSJ5nVZQT2BEermgfvU";
 String bridgeIpAddress = "192.168.88.253";
 float constant = 375;
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS , TCS34725_GAIN_1X);
+acc_t acc[2];
+
+bool initGt521(void)
+{
+  Wire.begin(4, 5); // sda, scl
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);  // PWR_MGMT_1 register
+  Wire.write(0);     // set to zero (wakes up the MPU-6050)
+  Wire.endTransmission(true);
+  
+  return 1;
+}
+
+static acc_t readGt521(void)
+{
+  acc_t acc;
+  
+  size_t numberOfRegisters = 14;
+  Wire.beginTransmission(MPU);
+  Wire.write(0x3B);                                 // starting with register 0x3B (ACCEL_XOUT_H)
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU, numberOfRegisters, true);  // request a total of 14 registers
+  acc.AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)    
+  acc.AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  acc.AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  acc.Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+  
+  return acc;
+}
 
 static hsv rgb2hsv(rgb in)
 {
@@ -149,9 +181,58 @@ void setup()
   }
   Serial.println("TCS34725 found");
 
+  while (!initGt521()) 
+  {
+    delay(500);
+    Serial.println("Waiting for Gt521... ");
+  }
+  Serial.println("Gt521 found");
+
+   acc[0] = readGt521();
 }
 
 void loop() {
+  acc[1] = acc[0];
+  acc[0] = readGt521();
+  
+  acc_t diff;
+  diff.AcX = acc[0].AcX - acc[1].AcX;
+  diff.AcY = acc[0].AcY - acc[1].AcY;
+  diff.AcZ = acc[0].AcZ - acc[1].AcZ;
+  delay(35); 
+   
+
+  if ( (diff.AcX > diffAccThreshold) || (diff.AcY > diffAccThreshold)|| (diff.AcZ > diffAccThreshold) )
+  {
+    Serial.print(diff.AcX);
+    Serial.print("  "); Serial.print(diff.AcY);
+    Serial.print("  "); Serial.println(diff.AcZ);
+
+    pinMode(16, OUTPUT);
+    digitalWrite(16, HIGH); // @gremlins Bright light, bright light!
+
+    delay(100); 
+    uint16_t r, g, b, c;
+    tcs.getRawData(&r, &g, &b, &c);
+    Serial.print(r, DEC); Serial.print(", ");
+    Serial.print(g, DEC); Serial.print(", ");
+    Serial.print(b, DEC); Serial.print(", ");
+    Serial.print(c, DEC); Serial.println("");
+
+    rgb val = colorSensorAlgorithm(r,g,b,c);
+
+    if (setLampToRgbColor(val))
+    {
+      Serial.println("rgb color not send to lamp succesfull");
+    }
+    
+    delay(100);  
+    digitalWrite(16, LOW);
+
+    delay(1000);  
+  }
+
+  
   if (Serial.available()) {                     
 
     String action = Serial.readString();         

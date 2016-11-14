@@ -14,4 +14,11 @@ struct hsv_s{
 };
 typedef hsv_s hsv;
 
+struct acc_s {
+    int16_t AcX;
+    int16_t AcY;
+    int16_t AcZ;
+    int16_t Tmp;
+};
+typedef  acc_s acc_t;
 
